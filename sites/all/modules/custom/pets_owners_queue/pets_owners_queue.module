@@ -1,0 +1,64 @@
+<?php
+/**
+ * @file
+ *
+ * Adds queue
+ */
+
+/**
+ * @param $form
+ * @param $form_state
+ * @param $form_id
+ */
+function pets_owners_queue_form_pets_owners_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'pets_owners_form') {
+    $form['#submit'][] = 'pets_owners_queue_form_submit';
+  }
+}
+
+/**
+ * Implements hook_module_implements_alter().
+ */
+function pets_owners_queue_module_implements_alter(&$implementations, $hook) {
+  if ($hook == 'form_alter') {
+    if (isset($implementations) && isset($implementations['pets_owners_queue'])) {
+      $group = $implementations['pets_owners_queue'];
+      unset($implementations['pets_owners_queue']);
+      $implementations['pets_owners_queue'] = $group;
+    }
+  }
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ */
+function pets_owners_queue_form_submit($form, &$form_state) {
+//  dpm($form_state);
+  $queue = DrupalQueue::get('owners_queue');
+  $queue->createQueue();
+  $queue->createItem($form_state['values']['id']);
+}
+
+/**
+ * Implements hook_cron_queue_info().
+ */
+function pets_owners_queue_cron_queue_info() {
+  $queue['owners_queue'] = array(
+    'worker callback' => 'pets_owners_queue_item_process',
+    'time' => 60,
+  );
+  return $queue;
+}
+
+/**
+ * @param $data
+ */
+function pets_owners_queue_item_process($data) {
+  $pets_owners = entity_load_single("pets_owners_views_entity", $data);
+  $pets_owners->gender = 0;
+
+  entity_save("pets_owners_views_entity", $pets_owners);
+  cache_clear_all("*", 'cache_pets_owners_storage', TRUE);
+  watchdog('pets_owners_queue', "!name gender was changed to male", array('!name' => $pets_owners->name));
+}

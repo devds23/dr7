@@ -1,0 +1,108 @@
+<?php
+/**
+ * @file
+ * Install, update, and uninstall functions for the module3 module.
+ */
+
+/**
+ * Implements hook_menu_alter().
+ *
+ * @param $items
+ */
+function module4_menu_alter(&$items) {
+  $items['module3/node/%']['page callback'] = 'module4_node_view_page';
+}
+
+/**
+ * Implements hook_theme module4_theme().
+ *
+ * @param $existing
+ * @param $type
+ * @param $theme
+ * @param $path
+ *
+ * @return array
+ */
+function module4_theme($existing, $type, $theme, $path) {
+  return array(
+    'module4_function' => array(
+      'variables' => array('user' => NULL),
+    ),
+    'module4_template' => array(
+      'variables' => array('node' => NULL, 'user' => NULL, 'view_mode' => NULL),
+      'template' => 'module4_template',
+      'path' => drupal_get_path('module', 'module4'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_theme_registry_alter().
+ *
+ * @param $theme_registry
+ */
+function module4_theme_registry_alter(&$theme_registry) {
+//  dsm($theme_registry);
+  if (isset($theme_registry['menu_tree']['function'])) {
+    $theme_registry['menu_tree']['function'] = 'module4_menu_tree';
+  }
+}
+
+/**
+ * Overrides theme_menu_tree().
+ *
+ * @param $variables
+ *
+ * @return string
+ */
+function module4_menu_tree($variables) {
+  return '<ul class="menu module4-border">' . $variables['tree'] . '</ul>';
+}
+
+/**
+ * Callback function using HTML output.
+ *
+ * @param $nid
+ *
+ * @return string
+ */
+function module4_node_view_page($nid) {
+  global $user;
+  $node = node_load($nid);
+  if (empty($node)) {
+    return "Page Not Found";
+  }
+
+  return theme('module4_template', array(
+    'user' => $user,
+    'node' => $node,
+    'view_mode' => variable_get('content_view_mode')
+  ));
+}
+
+/**
+ * Theme function theme_module4_function()
+ *
+ * @param $variables
+ *
+ * @return string
+ */
+function theme_module4_function($variables) {
+  $output = "<h3>" . t("hello %username", array("%username" => $variables['user']->name)) . "</h3>";
+
+  return $output;
+}
+
+/**
+ * Implements hook_preprocess().
+ *
+ * @param $variables
+ * @param $hook
+ */
+function module4_preprocess_module4_template(&$variables) {
+  drupal_add_css(drupal_get_path('module', 'module4') . '/css/styles.css');
+  $tmp = node_view($variables['node'], $variables['view_mode']);
+
+  $variables['header'] = theme('module4_function', array('user' => $variables['user']));
+  $variables['page_body'] = drupal_render($tmp);
+}

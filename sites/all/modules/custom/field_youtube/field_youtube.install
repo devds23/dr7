@@ -1,0 +1,42 @@
+<?php
+/**
+ * @file
+ * Create table in the database
+ */
+
+/**
+ * Implements hook_field_schema().
+ */
+function field_youtube_field_schema($field) {
+  $columns = array(
+    'input' => array(
+      'type' => 'varchar',
+      'length' => 1024,
+      'not null' => FALSE,
+    ),
+    'youtube_id' => array(
+      'type' => 'varchar',
+      'length' => 15,
+      'not null' => FALSE,
+    ),
+    'file_fid' => array(
+      'type' => 'serial',
+      'unsigned' => TRUE,
+      'not null' => TRUE,
+    ),
+  );
+  $indexes = array(
+    'file_fid' => array('file_fid'),
+  );
+  $foreign_keys = array(
+    'file_id' => array(
+      'table' => 'file_managed',
+      'columns' => array('fid' => 'file_fid'),
+    ),
+  );
+  return array(
+    'columns' => $columns,
+    'indexes' => $indexes,
+    'foreign keys' => $foreign_keys,
+  );
+}

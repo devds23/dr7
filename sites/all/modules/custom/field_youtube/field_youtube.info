@@ -1,0 +1,7 @@
+core = "7.x"
+description = "This is custom module which called field_youtube which might attached to bundle"
+package = "Custom modules"
+name = "field_youtube"
+
+files[] = field_youtube.install
+files[] = field_youtube.module

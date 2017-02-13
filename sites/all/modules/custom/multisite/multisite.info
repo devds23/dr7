@@ -1,0 +1,4 @@
+core = "7.x"
+description = "This is custom multisite module"
+package = "Custom modules"
+name = "multisite"

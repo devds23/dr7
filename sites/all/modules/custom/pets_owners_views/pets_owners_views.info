@@ -1,0 +1,11 @@
+core = "7.x"
+description = "This is custom pets_owners_views module"
+package = "Custom modules"
+name = "pets_owners_views"
+dependencies[] = views
+dependencies[] = entity
+files[] = pets_owners_views.module
+files[] = views/pets_owners_views.views.inc
+files[] = pets_owners_views_filter_by_gender.inc
+files[] = pets_owners_views_field_image.inc
+files[] = pets_owners_views_product_type_field.inc

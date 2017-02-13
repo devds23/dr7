@@ -1,0 +1,122 @@
+<?php
+/**
+ * @file
+ * Create table in the database
+ */
+
+/**
+ * @return mixed
+ */
+function pets_owners_storage_schema() {
+  $schema['pets_owners_storage_submissions'] = array(
+    'description' => 'Stores person entries.',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Unique Primary Key'
+      ),
+
+      'name' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'description' => 'Name of the person',
+      ),
+
+      'gender' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'description' => 'Gender of the person',
+      ),
+
+      'other_gender' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'description' => 'Other gender of the person',
+      ),
+
+      'title' => array(
+        'type' => 'char',
+        'length' => 3,
+        'default' => '',
+        'description' => 'Title of the person',
+      ),
+
+      'age' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'size' => 'small',
+        'description' => 'The age of the person in years.'
+      ),
+
+      'hobby' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'description' => 'Hobby of the person',
+      ),
+
+      'have_pets' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'default' => 0,
+        'description' => 'The person have pets, yes or no?',
+      ),
+
+      'pet_name' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'description' => "Pet's name of the person",
+      ),
+
+      'email' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'description' => 'Email of the person',
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+  $schema['cache_pets_owners_storage'] = drupal_get_schema_unprocessed('system', 'cache');
+  return $schema;
+}
+
+/**
+ * Implements hook pets_owners_storage_update_7201().
+ */
+function pets_owners_storage_update_7201() {
+  db_add_field('pets_owners_storage_submissions', 'fid', array(
+    'type' => 'int',
+    'description' => "file id",
+    'not null' => FALSE,
+  ));
+}
+
+/**
+ * Create new database table {cache_pets_owners_storage}.
+ */
+function pets_owners_storage_update_7203() {
+  $schema['cache_pets_owners_storage'] = drupal_get_schema_unprocessed('system', 'cache');
+
+  db_create_table('cache_pets_owners_storage', $schema['cache_pets_owners_storage']);
+}
+
+/**
+ * Implements hook pets_owners_storage_update_7204()
+ */
+function pets_owners_storage_update_7204() {
+  db_add_field('pets_owners_storage_submissions', 'country', array(
+    'type' => 'varchar',
+    'description' => "country",
+    'length' => 255,
+    'not null' => FALSE,
+  ));
+  db_add_field('pets_owners_storage_submissions', 'city', array(
+    'type' => 'varchar',
+    'description' => "city",
+    'length' => 255,
+    'not null' => FALSE,
+  ));
+}

@@ -1,0 +1,19 @@
+<?php
+/**
+ * @file
+ *
+ * .module file with hooks
+ */
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function pets_owners_panels_ctools_plugin_directory($owner, $plugin_type) {
+  if ($owner == 'ctools') {
+    return 'plugins/' . $plugin_type;
+  }
+
+  if ($owner == 'panels' && $plugin_type == 'layouts') {
+    return 'plugins/layouts';
+  }
+}

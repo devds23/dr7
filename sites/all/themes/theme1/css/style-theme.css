@@ -1,0 +1,82 @@
+#wrapper-full-content {
+    background-color: #d9d9d9;
+}
+
+.custom-content, .wrapper-teaser-content  {
+    border: 2px solid #33a333;
+    margin-bottom: 10px;
+    width: 70%;
+}
+
+.block-search-form-content {
+    border: cornflowerblue 2px solid;
+}
+
+.wrapper-footer-block {
+    border: red 2px solid;
+}
+
+#custom-wrapper-comments {
+    border:#d9d9d9 2px solid;
+    background-color: #d9d9d9;
+}
+
+.custom-comment-content{
+    background-color: #6f9dbd;
+    width: 70%;
+}
+
+.custom-comment-program-node-content {
+    background-color: #99ff99;
+    width: 70%;
+}
+
+.custom-field-item {
+    border: 1px solid #8c2e0b;
+    width: 70%;
+}
+
+.custom-field-item-article-pn:hover {
+    background-color: #003471;
+    color: #d9d9d9;
+}
+
+.custom-field-body-item:hover {
+    text-decoration: underline;
+    color: #CC0000;
+}
+
+.custom-field-file-item {
+    border: 1px solid #dd5522;
+    background-color: #ff17d6;
+}
+
+.wrapper-page-edit {
+    border: 1px aquamarine;
+    width: 80%;
+    background-color: #bbddff;
+}
+
+#page-content-edit {
+    background-color: #edf1f3;
+}
+
+#page-footer-edit {
+    background-color: #5f605b;
+    color: #9bff9b;
+}
+
+#teaser-term-content {
+    color: #0000AA;
+    background-color: #99ff99;
+}
+
+.taxonomy-term-teaser, .full-taxonomy-term {
+    border: 2px solid #99ff99;
+    width: 70%;
+}
+
+.wrapper-page {
+    width: 70%;
+    margin: 0 auto;
+}

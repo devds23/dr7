@@ -1,0 +1,8 @@
+core = "7.x"
+description = "This is custom pets_owners_storage module"
+package = "Custom modules"
+name = "pets_owners_panels"
+
+dependencies[] = ctools
+
+dependencies[] = panels

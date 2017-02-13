@@ -1,0 +1,305 @@
+<?php
+/**
+ * @file
+ *
+ * Implements hook_views_api().
+ */
+
+/**
+ * Implements hook_views_api().
+ */
+function pets_owners_views_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'pets_owners_views') . '/views',
+  );
+}
+
+/**
+ * Implements hook_entity_info().
+ */
+function pets_owners_views_entity_info() {
+  $return = array(
+    'pets_owners_views_entity' => array(
+      'label' => t('Pet owner'),
+      'entity class' => 'Entity',
+      'controller class' => 'EntityAPIController',
+      'base table' => 'pets_owners_storage_submissions',
+      'uri callback' => 'uri',
+      'fieldable' => TRUE,
+      'entity keys' => array('id' => 'id'),
+      'load hook' => 'pets_owners_views_load_entity',
+      'label callback' => 'pets_owners_views_entity_label',
+    ),
+  );
+
+  return $return;
+}
+
+/**
+ * @param $entity
+ * @param $entity_type
+ *
+ * @return string
+ */
+function pets_owners_views_entity_label($entity, $entity_type) {
+
+  return $entity->name . "/" . $entity->email;
+}
+
+/**
+ * Implements hook_menu().
+ */
+function pets_owners_views_menu() {
+  $items = array();
+  $items['pets_owners/export'] = array(
+    'title' => 'Batch PetsOwnersViews',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pets_owners_views_admin_page_form'),
+    'access callback' => TRUE,
+  );
+
+  $items['pets_owners/batch_export'] = array(
+    'title' => 'Batch export',
+    'description' => 'Drupal-way batch processing',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pets_owners_views_export_admin_page_form'),
+    'access callback' => TRUE,
+  );
+  return $items;
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ *
+ * @return array
+ */
+function pets_owners_views_admin_page_form($form, &$form_state) {
+  $form = array();
+
+  $form['batch_gender'] = array(
+    '#type' => 'select',
+    '#title' => t('Choose batch gender'),
+    '#options' => array(0 => t('male'), 1 => t('female'), 2 => t('other')),
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'CSV',
+  );
+
+  return $form;
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ */
+function pets_owners_views_admin_page_form_submit($form, &$form_state) {
+  $csv_handle = fopen('temporary://pets-owners-export.csv', 'w');
+  fputcsv($csv_handle, pets_owners_views_get_csv_header_col_names(), ";");
+
+  $gender = $form_state['values']['batch_gender'];
+
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'pets_owners_views_entity')
+    ->propertyCondition('gender', $gender);
+  $result = $query->execute();
+
+  $operations = array();
+  foreach ($result['pets_owners_views_entity'] as $row) {
+    $operations[] = array('pets_owners_views_operation', array($row->id));
+  }
+
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'pets_owners_views_finished',
+  );
+
+  batch_set($batch);
+}
+
+function pets_owners_views_operation($eid, &$context) {
+  $csv_handle = fopen('temporary://pets-owners-export.csv', 'a');
+  $row = array_fill_keys(pets_owners_views_get_csv_header_col_names(), '');
+
+  $pet = entity_load_single('pets_owners_views_entity', $eid);
+
+  $row['name'] = $pet->name;
+  $row['age'] = $pet->age;
+  $row['email'] = $pet->email;
+  $row['gender'] = $pet->gender;
+
+  $context['results']['titles'][] = "pet owner: " . $eid;
+
+  fputcsv($csv_handle, $row, ";");
+  fclose($csv_handle);
+}
+
+function pets_owners_views_finished($success, $results, $operations) {
+  $file_path = 'public://pets-owners-export-' . time() . '.csv';
+  if ($success) {
+    file_unmanaged_move('temporary://pets-owners-export.csv', $file_path, FILE_EXISTS_REPLACE);
+    drupal_set_message('Updated data on '
+      . count($results['titles'])
+      . ' records:'
+      . theme('item_list', array('items' => $results['titles']))
+      . l(t("Download"), file_create_url($file_path))
+    );
+  }
+  else {
+    drupal_set_message('Finished with errors.', 'error');
+  }
+}
+
+/**
+ * Return CSV header col names.
+ */
+function pets_owners_views_get_csv_header_col_names() {
+  return array(
+    'name',
+    'age',
+    'email',
+    'gender'
+  );
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ *
+ * @return array
+ */
+function pets_owners_views_export_admin_page_form($form, &$form_state) {
+  $form = array();
+
+  $form['batch_gender'] = array(
+    '#type' => 'select',
+    '#title' => t('Choose batch gender'),
+    '#options' => array(0 => t('male'), 1 => t('female'), 2 => t('other')),
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'CSV',
+  );
+
+  return $form;
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ */
+function pets_owners_views_export_admin_page_form_submit($form, &$form_state) {
+  $csv_handle = fopen('temporary://pets-owners-batch-export.csv', 'w');
+  fputcsv($csv_handle, pets_owners_views_get_csv_header_col_names(), ";");
+
+  $gender = $form_state['values']['batch_gender'];
+  $batch = pets_owners_views_batch_export($gender);
+
+  batch_set($batch);
+}
+
+/**
+ * @param $gender
+ *
+ * @return array
+ */
+function pets_owners_views_batch_export($gender) {
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'pets_owners_views_entity')
+    ->propertyCondition('gender', $gender);
+  $max = $query->count()->execute();
+
+  $operations[] = array('pets_owners_views_op_2', array($gender, $max));
+
+  $batch = array(
+    'operations' => $operations,
+    'finished' => 'pets_owners_views_export_finished',
+    'title' => t('Processing batch 2'),
+    'init_message' => t('Batch 2 is starting.'),
+    'progress_message' => t('Processed @current out of @total.'),
+    'error_message' => t('Batch 2 has encountered an error.'),
+  );
+
+  return $batch;
+}
+
+/**
+ * @param $gender
+ * @param $max
+ * @param $context
+ */
+function pets_owners_views_op_2($gender, $max, &$context) {
+  if (empty($context['sandbox'])) {
+    $context['sandbox'] = array();
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['current_node'] = 0;
+    $context['sandbox']['max'] = $max;
+  }
+
+  $query = new EntityFieldQuery();
+  $query->entityCondition('entity_type', 'pets_owners_views_entity')
+    ->propertyCondition('gender', $gender)
+    ->propertyCondition('id', $context['sandbox']['current_node'], '>')
+    ->range(NULL, 2);
+  $record = $query->execute();
+  $time = microtime(TRUE) + 0.01;
+  $current_time = microtime(TRUE);
+
+  if ($current_time < $time) {
+    if (count($record['pets_owners_views_entity']) == 0) {
+      return;
+    }
+    foreach ($record['pets_owners_views_entity'] as $current_record) {
+      $pet = entity_load_single('pets_owners_views_entity', $current_record->id);
+
+      $csv_handle = fopen('temporary://pets-owners-batch-export.csv', 'a');
+      $row = array_fill_keys(pets_owners_views_get_csv_header_col_names(), '');
+
+      $row['name'] = $pet->name;
+      $row['email'] = $pet->email;
+      $row['gender'] = $pet->gender;
+
+      fputcsv($csv_handle, $row, ";");
+      fclose($csv_handle);
+
+      $context['results']['titles'][] = "pet owner: " . $current_record->id;
+      // Update our progress information.
+      $context['sandbox']['progress']++;
+      $context['sandbox']['current_node'] = $current_record->id;
+      $context['message'] = check_plain($pet->name);
+      // Inform the batch engine that we are not finished,
+      // and provide an estimation of the completion level we reached.
+    }
+    $current_time = microtime(TRUE);
+  }
+  if ($context['sandbox']['progress'] != $context['sandbox']['max']) {
+    $context['finished'] = ($context['sandbox']['progress'] / $context['sandbox']['max']);
+  }
+
+  dpm($record);
+}
+
+/**
+ * @param $success
+ * @param $results
+ * @param $operations
+ */
+function pets_owners_views_export_finished($success, $results, $operations) {
+  $file_path = 'public://pets-owners-batch-export-' . time() . '.csv';
+  if ($success) {
+    file_unmanaged_move('temporary://pets-owners-batch-export.csv', $file_path, FILE_EXISTS_REPLACE);
+    drupal_set_message('Updated data on '
+      . count($results['titles'])
+      . ' records:'
+      . theme('item_list', array('items' => $results['titles']))
+      . l(t("Download"), file_create_url($file_path))
+    );
+  }
+  else {
+    drupal_set_message('Finished with errors.', 'error');
+  }
+}

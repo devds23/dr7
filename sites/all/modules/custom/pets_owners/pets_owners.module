@@ -1,0 +1,48 @@
+<?php
+
+/**
+ * @file
+ * File contain menu_hook, form.
+ *
+ */
+/**
+ * Implements hook_menu().
+ */
+function pets_owners_menu() {
+  $items['pets_owners'] = array(
+    'title' => "Pets Owners",
+    'page callback' => 'pets_owners_page',
+    'page arguments' => array('pets_owners_form'),
+    'access callback' => 'user_is_logged_in',
+    'file' => 'pets_owners.pages.inc',
+  );
+
+  $items['pets_owners/autocomplete'] = array(
+    'page callback' => 'pets_owners_page_autocomplete',
+    'file' => 'pets_owners.pages.inc',
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_CALLBACK ,
+  );
+
+  $items['pets_owners/ajax'] = array(
+    'title' => "ajax",
+    'page callback' => 'pets_owners_page_ajax',
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_CALLBACK ,
+    'file' => 'pets_owners.pages.inc',
+    'delivery callback' => 'ajax_deliver',
+  );
+
+  $items['pets_owners/colorizer'] = array(
+    'title' => "colorizer",
+    'page callback' => 'pets_owners_page_colorizer',
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_CALLBACK ,
+    'file' => 'pets_owners.pages.inc',
+    'delivery callback' => 'ajax_deliver',
+  );
+
+  return $items;
+}
+
+

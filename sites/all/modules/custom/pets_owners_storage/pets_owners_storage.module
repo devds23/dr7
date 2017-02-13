@@ -1,0 +1,310 @@
+<?php
+/**
+ * @file
+ * Module pets_owners_storage
+ */
+module_load_include('forms.inc', 'pets_owners');
+
+/**
+ * Implements hook_menu().
+ */
+function pets_owners_storage_menu() {
+  $items['pets_owners/dashboard'] = array(
+    'title' => 'List of pets owners',
+    'description' => 'Table of pets owners',
+    'page callback' => 'pets_owners_storage_page_table',
+    'access arguments' => array('administer site configuration'),
+    'file' => 'pets_owners_storage.page.inc',
+  );
+
+  $items['pets_owners/%/delete'] = array(
+    'title' => 'Delete',
+    'description' => 'For delete record from table',
+    'page callback' => 'pets_owners_storage_page_wrapper_delete',
+    'page arguments' => array(1),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'pets_owners_storage.page.inc',
+  );
+
+  $items['pets_owners/%/edit'] = array(
+    'title' => 'Edit',
+    'description' => 'For edit record from table',
+    'page callback' => 'pets_owners_storage_page_edit_form',
+    'page arguments' => array(1),
+    'access arguments' => array('user_is_logged_in'),
+    'file' => 'pets_owners_storage.page.inc',
+  );
+
+  $items['pets_owners/%/view'] = array(
+    'title' => 'View',
+    'description' => 'For view record from table',
+    'page callback' => 'pets_owners_storage_page_view',
+    'page arguments' => array(1),
+    'access arguments' => array('user_is_logged_in'),
+    'file' => 'pets_owners_storage.page.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_flush_caches().
+ */
+function pets_owners_storage_flush_caches() {
+  return array('cache_pets_owners_storage');
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * @param $form
+ * @param $form_state
+ * @param $form_id
+ */
+function pets_owners_storage_form_pets_owners_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'pets_owners_form') {
+//    dpm($form_state);
+    $form['#submit'][] = 'pets_owners_storage_form_submit';
+    $form['#validate'][] = 'pets_owners_storage_customfile_validate';
+
+    $form['pet_info'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Pet fields'),
+      '#collapsible' => TRUE, // Added
+      '#collapsed' => FALSE,  // Added
+      '#states' => array(
+        'visible' => array(
+          ':input[name="question"]' => array('checked' => TRUE),
+        ),
+      ),
+    );
+    if (isset($form['petsname'])) {
+      $form['pet_info']['petsname'] = $form['petsname'];
+      unset($form['petsname']);
+    }
+    $form['pet_info']['file'] = array(
+      '#type' => 'file',
+      '#title' => t('Pet image'),
+      '#description' => t('Upload a file, allowed extensions: jpg, jpeg, png'),
+      '#upload_location' => 'public://pets/',
+      '#states' => array(
+        'visible' => array(
+          'input[name="question"]' => array('checked' => TRUE),
+        ),
+      ),
+    );
+
+    $country_vocabulary = taxonomy_vocabulary_machine_name_load('country');
+    $tax = taxonomy_get_tree($country_vocabulary->vid);
+
+    $opt = array();
+    foreach ($tax as $country) {
+      $opt[$country->tid] = t($country->name);
+    }
+
+    $form['country'] = array(
+      '#type' => 'select',
+      '#title' => t('Your country'),
+      '#options' => $opt,
+      '#required' => TRUE,
+      '#ajax' => array(
+        'callback' => 'pets_owners_storage_some_callback',
+        'wrapper' => 'city-div',
+        'effect' => 'slide',
+      ),
+    );
+
+    $form['city'] = array(
+      '#prefix' => '<div id="city-div">',
+      '#suffix' => '</div>',
+    );
+
+    if (isset($form_state['build_info']['args'][0]['city'])) {
+      $country_tid = !empty($form_state['build_info']['args'][0]['country']) ? $form_state['build_info']['args'][0]['country'] : 0;
+      $city_name = pets_owners_strage_entity_query_field($country_tid);
+      $form['city']['#type'] = 'select';
+      $form['city']['#options'] = $city_name;
+    }
+
+    if (!empty($form_state['values']['country'])) {
+      $country_tid = !empty($form_state['values']['country']) ? $form_state['values']['country'] : 0;
+      $city_name = pets_owners_strage_entity_query_field($country_tid);
+
+      $form['city'] = array(
+        '#prefix' => '<div id="city-div">',
+        '#suffix' => '</div>',
+        '#title' => t('city'),
+        '#type' => 'select',
+        '#options' => $city_name,
+        '#empty_option' => t('-Select-'),
+        '#attached' => array(
+          'js' => array(
+            drupal_get_path('module', 'pets_owners_storage') . '/pets_owners_storage_jscript.js',
+          ),
+        ),
+      );
+    }
+
+    $form['email']['#weight'] = 9;
+    $form['submit_button']['#weight'] = 10;
+
+    if (isset($form_state['build_info']['args'][0])) {
+      $value = $form_state['build_info']['args'][0];
+
+      $query = db_select('pets_owners_storage_submissions', 'pt')
+        ->fields('pt', array('fid'))
+        ->condition('id', $value['id']);
+      $result = $query->execute();
+      $fid = $result->fetchField();
+      $file = file_load($fid);
+
+      $file_uri = !empty($file->uri) ? $file->uri : '';
+      $file_name = !empty($file->filename) ? $file->filename : '';
+      $variables = array(
+        'path' => $file_uri,
+        'alt' => $file_name,
+        'style_name' => 'pet_image_style',
+        'getsize' => FALSE,
+      );
+
+      $form['name']['#default_value'] = !empty($value['name']) ? $value['name'] : '';
+      $form['gender']['#default_value'] = !empty($value['gender']) ? $value['gender'] : '';
+      $form['other_gender']['#default_value'] = !empty($value['other_gender']) ? $value['other_gender'] : '';
+      $form['title']['#default_value'] = !empty($value['title']) ? $value['title'] : '';
+      $form['age']['#default_value'] = !empty($value['age']) ? $value['age'] : '';
+      $form['hobby']['#default_value'] = !empty($value['hobby']) ? $value['hobby'] : '';
+      $form['have_pets']['#default_value'] = !empty($value['have_pets']) ? $value['have_pets'] : '';
+      $form['pet_info']['petsname']['#default_value'] = !empty($value['pet_name']) ? $value['pet_name'] : '';
+      $form['pet_info']['file']['#prefix'] = theme('image_style', $variables);
+      $form['email']['#default_value'] = !empty($value['email']) ? $value['email'] : '';
+      $form['country']['#default_value'] = !empty($value['country']) ? intval($value['country']) : NULL;
+      $form['city']['#default_value'] = !empty($value['city']) ? intval($value['city']) : NULL;
+      $form['pet_info']['file']['#states']['required'][':input[name="question"]']['checked'] = TRUE;
+
+      $form['delete_button'] = array(
+        '#type' => 'submit',
+        '#value' => t('Delete'),
+        '#submit' => array('pets_owners_storage_button_delete'),
+        '#executes_submit_callback' => TRUE,
+        '#weight' => 10,
+      );
+    }
+  }
+}
+
+function pets_owners_strage_entity_query_field($country_tid) {
+  $entity_query = new EntityFieldQuery();
+  $entity_query->entityCondition('entity_type', 'taxonomy_term')
+    ->entityCondition('bundle', array('city'))
+    ->fieldCondition('field_tax_country', 'tid', $country_tid);
+  $entity_result = $entity_query->execute();
+  $city_name = array();
+
+  foreach ($entity_result['taxonomy_term'] as $city) {
+    $tax_obj = taxonomy_term_load($city->tid);
+    $label = entity_label('taxonomy_term', $tax_obj);
+    $city_name[$city->tid] = $label;
+  }
+  return $city_name;
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ *
+ * @return mixed
+ */
+function pets_owners_storage_some_callback(&$form, $form_state) {
+  return $form['city'];
+}
+
+/**
+ * Implements pets_owners_storage_form_submit().
+ *
+ * @param $form
+ * @param $form_state
+ */
+function pets_owners_storage_form_submit($form, &$form_state) {
+//  dpm($form_state);
+  if (isset($form_state['build_info']['args'][0]['id'])) {
+    $id = $form_state['build_info']['args'][0]['id'];
+  }
+  else {
+    $id = NULL;
+  }
+
+  $query = db_select('pets_owners_storage_submissions', 'pt')
+    ->fields('pt', array('id', 'fid'))
+    ->condition('id', $id);
+  $result = $query->execute();
+
+  if (!empty($result)) {
+    foreach ($result as $record) {
+      $check_id = $record->id;
+      $check_fid = $record->fid;
+    }
+  }
+  else {
+    $check_id = NULL;
+    $check_fid = NULL;
+  }
+
+  if (!empty($form_state['values']['file'])) {
+    $file = $form_state['values']['file'];
+
+    $file->status = FILE_STATUS_PERMANENT;
+    file_save($file);
+  }
+  else {
+    $file = NULL;
+  }
+
+  if (!empty($check_id)) {
+    module_load_include('inc', 'pets_owners_storage', 'pets_owners_storage');
+    pets_owners_storage_update($form_state, $file, $check_id, $check_fid);
+  }
+  else {
+    module_load_include('inc', 'pets_owners_storage', 'pets_owners_storage');
+    pets_owners_storage_create($form_state, $file);
+  }
+
+  if (!empty($file->fid)) {
+    $query = db_select('pets_owners_storage_submissions', 'pt')
+      ->fields('pt', array('id'))
+      ->condition('fid', $file->fid);
+
+    $result = $query->execute();
+    $new_id = $result->fetchField();
+
+    if (!empty($file)) {
+      file_usage_add($file, 'pets_owners_storage', 'pet_owner', $new_id);
+    }
+  }
+
+  drupal_set_message(t("The the record is saved."));
+}
+
+/**
+ * Implements pets_owners_storage_customfile_validate().
+ *
+ * @param $form
+ * @param $form_state
+ */
+function pets_owners_storage_customfile_validate($form, &$form_state) {
+  $file = file_save_upload('file', array(
+    'file_validate_is_image' => array(),
+    'file_validate_extensions' => array('png jpg jpeg'),
+    'file_validate_image_resolution' => array('1000x1000'),
+    'file_validate_size' => array(100000),
+  ));
+
+  if ($form_state['values']["question"] == 1 && $file == NULL) {
+    form_set_error('file', "No file was uploaded");
+  }
+
+  if (is_object($file)) {
+    if ($file = file_move($file, 'public://pets')) {
+      $form_state['values']['file'] = $file;
+    }
+  }
+}

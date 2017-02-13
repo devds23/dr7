@@ -1,0 +1,6 @@
+core = "7.x"
+description = "This is custom module3 for entity programmatic manipulate"
+package = "Custom modules"
+name = "module3"
+
+configure = admin/config/content/module3

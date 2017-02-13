@@ -1,0 +1,244 @@
+ <?php
+/**
+ * @file
+ * Install, update, and uninstall functions for the module1 module.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function module1_menu() {
+  $items['module1/scores'] = array(
+    'title' => 'Table of students',
+    'description' => 'HTML',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -1,
+  );
+
+  $items['module1'] = array(
+    'title' => 'Table of students1',
+    'description' => 'HTML',
+    'page callback' => 'module1_html_page',
+    'access callback' => 'user_is_logged_in',
+  );
+
+  $items['module1/page1'] = array(
+    'title' => 'Form1',
+    'description' => 'My form',
+    'page callback' => 'module1_wrapper',
+    'page arguments' => array(1),
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['module1/page2'] = array(
+    'title' => 'Form2',
+    'description' => 'My form',
+    'page callback' => 'module1_wrapper',
+    'page arguments' => array(1),
+    'access callback' => 'user_is_logged_in',
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  return $items;
+}
+
+/**
+ *
+ * Implements function wrapper()
+ *
+ * @param $current_form
+ * @param string $def_value
+ *
+ * @return array
+ */
+function module1_wrapper($current_form, $def_value = '') {
+  $func = 'module1_' . $current_form;
+  $arr = array(drupal_get_form($func, $def_value));
+
+  return $arr;
+}
+
+/**
+ * Implements callback funtion module1_page1().
+ */
+function module1_page1($form, &$form_state, $def_value) {
+//  drupal_set_message("<pre>" . print_r($form_state, 1) . "</pre>");
+  $form['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Your name'),
+    '#default_value' => $def_value,
+//    '#default_value' => variable_get('def_val'),
+  );
+
+  $form['about'] = array(
+    '#title' => t('Keywords'),
+    '#type' => 'textarea',
+    '#description' => t('"Company, Inc."'),
+  );
+  $form['country'] = array(
+    '#type' => 'select',
+    '#title' => t('Country'),
+    '#options' => array(
+      'us' => t('USA'),
+      'fr' => t('France'),
+      'ua' => 'Ukraine',
+      'eng' => "Great Britain"
+    ),
+    '#description' => t('Choose your country'),
+  );
+
+  $form['gender'] = array(
+    '#type' => 'radios',
+    '#title' => t('Gender'),
+    '#description' => t('Choose your gender'),
+    '#options' => array(
+      0 => t('female'),
+      1 => t('male'),
+    ),
+    '#required' => TRUE,
+  );
+
+  $form['message'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Send me a message.'),
+  );
+
+  $form['preview'] = array(
+    '#type' => 'button',
+    '#value' => t('Preview'),
+    '#weight' => 19,
+  );
+
+  $form['submit_button'] = array(
+    '#type' => 'submit',
+    '#value' => t('Click Here!'),
+  );
+
+  return $form;
+}
+
+/**
+ * Implements function form page2
+ *
+ * @param $form
+ * @param $form_state
+ *
+ * @return mixed
+ */
+function module1_page2($form, &$form_state) {
+  $form['country'] = array(
+    '#type' => 'select',
+    '#title' => t('Country'),
+    '#options' => array(
+      'us' => t('USA'),
+      'fr' => t('France'),
+      'ua' => 'Ukraine',
+      'eng' => "Great Britain"
+    ),
+    '#description' => t('Choose your country'),
+  );
+
+  $form['gender'] = array(
+    '#type' => 'radios',
+    '#title' => t('Gender'),
+    '#description' => t('Choose your gender'),
+    '#options' => array(
+      0 => t('female'),
+      1 => t('male'),
+    ),
+    '#required' => TRUE,
+  );
+
+  $form['message'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Send me a message.'),
+  );
+
+  $form['preview'] = array(
+    '#type' => 'button',
+    '#value' => t('Preview'),
+    '#weight' => 19,
+  );
+
+  $form['submit_button'] = array(
+    '#type' => 'submit',
+    '#value' => t('Click Here!'),
+  );
+
+  return $form;
+}
+
+/**
+ *
+ * Implements page1_submit()
+ *
+ * @param $form
+ * @param $form_state
+ */
+function module1_page1_submit($form, &$form_state) {
+  $form_state['redirect'] = '/';
+//  dsm($form_state['values']);
+}
+
+/**
+ * Implements page2_submit()
+ *
+ * @param $form
+ * @param $form_state
+ */
+function module1_page2_submit($form, &$form_state) {
+  $form_state['redirect'] = '/';
+//  drupal_set_message("<pre>" . print_r($form_state['values'], 1) . "</pre>");
+}
+
+/**
+ * Implements function html_page()
+ *
+ * @return string
+ */
+function module1_html_page() {
+  $arr = module_invoke_all('students_score');
+  drupal_alter('students_score', $arr);
+
+  $html_str = '<ul>';
+  foreach ($arr as $name => $score) {
+    $html_str .= "<li>$name : $score</li>";
+  }
+  $html_str .= "</ul>";
+//  dpm($_SERVER["SERVER_NAME"]);
+
+  return $html_str;
+}
+
+/**
+ * Implements custom hook module1_students_score()
+ */
+function module1_students_score() {
+  $score_table = array('Nazar' => 3, 'Max' => 3, 'Igor' => 3);
+  return $score_table;
+}
+
+
+//  $output = array(
+//    'first_para' => array(
+//      '#type' => 'html_tag',
+//      '#tag' => 'p',
+//      '#value' => 'Hello drupal this is a first paragraph'
+//    ),
+//    'second_para' => array(
+//      '#items' => array('item 1', 'item 2', 'item 3'),
+//      '#theme' => 'item_list',
+//    ),
+//  );
+
+//  $test = array(
+//    'element' => array(
+//      '#type' => 'html_tag',
+//      '#tag' => 'p',
+//      '#attributes' => array('class' => 'outer'),
+//      '#value' => 'All students!',
+//    )
+//  );
+//  return theme_html_tag($test) . print_r($arr, 1);
+//  return "<pre>" . print_r($arr, 1) . "</pre>";

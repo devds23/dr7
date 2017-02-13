@@ -1,0 +1,4 @@
+core = "7.x"
+description = "This is custom pets_owners_queue module"
+package = "Custom modules"
+name = "pets_owners_queue"

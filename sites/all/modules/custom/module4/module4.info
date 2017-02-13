@@ -1,0 +1,8 @@
+core = "7.x"
+description = "This is custom module4 for altered theming of module module3"
+package = "Custom modules"
+name = "module4"
+
+;Add CSS files
+;stylesheets[all][] = css/styles.css
+

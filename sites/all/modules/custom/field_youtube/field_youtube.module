@@ -1,0 +1,347 @@
+<?php
+/**
+ * @file
+ *
+ * Implement custom field
+ */
+
+/**
+ * Implements hook_field_info().
+ */
+
+function field_youtube_field_info() {
+  return array(
+    'youtube_video' => array(
+      'label' => t('Video Youtube'),
+      'description' => t("This field stores video's"),
+      'default_widget' => 'youtube_video_widget',
+      'default_formatter' => 'youtube_video_formatter',
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_widget_info().
+ */
+function field_youtube_field_widget_info() {
+  return array(
+    'youtube_video_widget' => array(
+      'label' => t('Video from youtube'),
+      'field types' => array('youtube_video'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_widget_form().
+ */
+function field_youtube_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  $element['input'] = array();
+
+  switch ($instance['widget']['type']) {
+    case 'youtube_video_widget':
+      $element['input'] = array(
+        '#type' => 'textfield',
+        '#maxlength' => 512,
+        '#title' => $element['#title'],
+        '#default_value' => isset($items[$delta]['input']) ? $items[$delta]['input'] : '',
+      );
+      break;
+  }
+
+  return $element;
+}
+
+/**
+ * Implements hook_field_insert().
+ */
+function field_youtube_field_insert($entity_type, $entity, $field, $instance, $langcode, &$items) {
+  list($id, $vid, $bundle) = entity_extract_ids($entity_type, $entity);
+
+  foreach ($items as $number => $item) {
+    $video_id = field_youtube_get_video_id($item['input']);
+
+    $image = @file_get_contents("https://img.youtube.com/vi/" . $video_id . "/0.jpg");
+    $directory = 'public://youtube_' . $video_id . '.jpg';
+
+    if ($image !== FALSE) {
+      $file = file_save_data($image, $directory);
+      $file->status = 1;
+      $file = file_save($file);
+      $items[$number]['file_fid'] = $file->fid;
+
+      file_usage_add($file, 'field_youtube', $entity_type, $id);
+    }
+    else {
+      $items[$number]['file_fid'] = NULL;
+    }
+    $items[$number]['youtube_id'] = $video_id;
+  }
+}
+
+/**
+ * Implements hook_field_update().
+ */
+function field_youtube_field_update($entity_type, $entity, $field, $instance, $langcode, &$items) {
+  if (!isset($entity->{$field['field_name']})) {
+    return;
+  }
+  list($id, $vid, $bundle) = entity_extract_ids($entity_type, $entity);
+
+  $current_fids = array();
+  foreach ($items as $item) {
+    if (isset($item['file_fid'])) {
+      $current_fids[] = $item['file_fid'];
+    }
+  }
+
+  if (isset($entity->original)) {
+    $original = $entity->original;
+  }
+  else {
+    $original = entity_create_stub_entity($entity_type, array(
+      $id,
+      $vid,
+      $bundle
+    ));
+    field_attach_load($entity_type, array($id => $original), FIELD_LOAD_CURRENT, array('field_id' => $field['id']));
+  }
+  $original_fids = array();
+  if (!empty($original->{$field['field_name']}[$langcode])) {
+    foreach ($original->{$field['field_name']}[$langcode] as $original_item) {
+      $original_fids[] = $original_item['file_fid'];
+      if (isset($original_item['file_fid']) && !in_array($original_item['file_fid'], $current_fids)) {
+        // Decrement the file usage count by 1 and delete the file if possible.
+        field_youtube_field_delete_file($original_item, $field, $entity_type, $id);
+      }
+    }
+  }
+  foreach ($items as $number => $item) {
+    $video_id = field_youtube_get_video_id($item['input']);
+    $image = @file_get_contents("https://img.youtube.com/vi/" . $video_id . "/0.jpg");
+    $directory = 'public://youtube_' . $video_id . '.jpg';
+
+    if ($image !== FALSE) {
+      $file = file_save_data($image, $directory);
+      $file->status = 1;
+      $file = file_save($file);
+      $items[$number]['file_fid'] = $file->fid;
+
+      file_usage_add($file, 'field_youtube', $entity_type, $id);
+    }
+    else {
+      $items[$number]['file_fid'] = NULL;
+    }
+    $items[$number]['youtube_id'] = $video_id;
+  }
+}
+
+/**
+ * Implements hook_field_delete().
+ */
+function field_youtube_field_delete($entity_type, $entity, $field, $instance, $langcode, &$items) {
+  list($id, $vid, $bundle) = entity_extract_ids($entity_type, $entity);
+
+  foreach ($items as $delta => $item) {
+    field_youtube_field_delete_file($item, $field, $entity_type, $id, 0);
+  }
+}
+
+/**
+ * @param $item
+ * @param $field
+ * @param $entity_type
+ * @param $id
+ * @param int $count
+ *
+ * @return bool|mixed|TRUE
+ */
+function field_youtube_field_delete_file($item, $field, $entity_type, $id, $count = 1) {
+  if (isset($item['file_fid'])) {
+    $file = file_load($item['file_fid']);
+
+    $file_usage = file_usage_list($file);
+    if (!empty($file_usage['field_youtube'])) {
+      file_usage_delete($file, 'field_youtube', $entity_type, $id, $count);
+      return file_delete($file);
+    }
+
+  }
+
+  return TRUE;
+}
+
+/**
+ * Implements hook_field_validate().
+ */
+function field_youtube_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
+  foreach ($items as $delta => $item) {
+    if (!empty($item['input'])) {
+      $video_id = field_youtube_get_video_id($item['input']);
+
+      if (!$video_id || strlen($video_id) > 15) {
+        $errors[$field['field_name']][$langcode][$delta][] = array(
+          'error' => 'youtube_invalid',
+          'message' => t('Please provide a valid YouTube URL.'),
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_field_is_empty().
+ */
+function field_youtube_field_is_empty($item, $field) {
+  return empty($item['input']);
+}
+
+/**
+ * Extracts the video_id from the submitted field value.
+ *
+ * @param $input
+ *   The input submitted to the field.
+ *
+ * @return
+ *   Returns the video_id if available, or FALSE if not.
+ */
+function field_youtube_get_video_id($input) {
+  $pos = strpos($input, 'src');
+  if ($pos !== FALSE) {
+    preg_match('/src="([^"]+)"/', $input, $matches);
+    $input = $matches[1];
+  }
+
+  preg_match("/^(?:http(?:s)?:\/\/)?(?:www\.)?(?:youtu\.be\/|youtube\.com\/(?:(?:watch)?\?(?:.*&)?v(?:i)?=|(?:embed|v|vi|user)\/))([^\?&\"'<> #]+)/", $input, $matches);
+
+  if (!empty($matches[1])) {
+    $video_id = $matches[1];
+    return $video_id;
+  }
+
+  return FALSE;
+}
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function field_youtube_field_formatter_info() {
+  $formatters = array(
+    'youtube_video_formatter' => array(
+      'label' => t('YouTube video'),
+      'field types' => array('youtube_video'),
+    ),
+    'image_link' => array(
+      'label' => t('Image'),
+      'field types' => array('youtube_video'),
+    ),
+  );
+
+  return $formatters;
+}
+
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function field_youtube_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $element = array();
+
+  switch ($display['type']) {
+
+    case 'youtube_video_formatter':
+      foreach ($items as $delta => $item) {
+        $src = "https://www.youtube.com/embed/" . $items[$delta]['youtube_id'];
+
+        $element[$delta] = array(
+          '#type' => 'html_tag',
+          '#tag' => 'iframe',
+          '#value' => '',
+          '#attributes' => array(
+            'src' => $src,
+            'frameborder' => 0,
+            'width' => "480",
+            'height' => "320",
+          ),
+        );
+      }
+      break;
+    case 'image_link':
+      foreach ($items as $delta => $item) {
+        $image_src = file_load($items[$delta]['file_fid']);
+        $image_vars = array(
+          'path' => isset($image_src->uri) ? $image_src->uri : NULL,
+          'width' => '480',
+          'height' => '320',
+        );
+        $image = theme('image', $image_vars);
+        $src = "https://www.youtube.com/watch?v=" . $items[$delta]['youtube_id'];
+
+        $element[$delta] = array(
+          '#type' => 'html_tag',
+          '#tag' => 'div',
+          '#value' => l($image, $src, array(
+            'html' => TRUE,
+            'attributes' => array('target' => '_blank')
+          )),
+        );
+      }
+  }
+
+  return $element;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///**
+// * Implements hook_field_formatter_settings_summary().
+// */
+//function field_youtube_field_formatter_settings_summary($field, $instance, $view_mode) {
+//  $output = t("Display type");
+//
+//  return $output;
+//}
+//
+///**
+// * Implements hook_field_formatter_settings_form().
+// */
+//function field_youtube_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+//  $display = $instance['display'][$view_mode];
+//  $settings = $display['settings'];
+//
+//  $element = array();
+//
+//  if ($display['type'] == 'youtube_video_formatter') {
+//    $element['display_mode'] = array(
+//      '#title' => t('Choose display type'),
+//      '#type' => 'select',
+//      '#options' => array(
+//        0 => t('No'),
+//        1 => t('Yes'),
+//      ),
+//      '#default_value' => $settings['display_mode'],
+//    );
+//  }
+//
+//  return $element;
+//}

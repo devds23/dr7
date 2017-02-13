@@ -1,0 +1,5 @@
+core = "7.x"
+description = "This is custom module which altered Module1"
+package = "Custom modules"
+name = "module2"
+

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="fdc50338-c9a3-4b7c-8d2b-788fc28d9e96" name="ubuntu-test" url="http://drupal-site.naz">
+        <fileTransfer port="0" mountedRoot="Z:\example\drupalsite" accessType="MOUNT" />
+      </webServer>
+    </option>
+  </component>
+</project>

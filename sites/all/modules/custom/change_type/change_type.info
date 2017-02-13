@@ -1,0 +1,5 @@
+core = "7.x"
+description = "This is custom change type of product"
+package = "Custom modules"
+name = "change_type"
+

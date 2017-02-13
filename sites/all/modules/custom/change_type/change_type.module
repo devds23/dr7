@@ -1,0 +1,177 @@
+<?php
+/**
+ * @file
+ *
+ */
+
+/**
+ * Implements hook_action_info().
+ *
+ * @return array
+ */
+function change_type_action_info() {
+
+  return array(
+    'change_type_my_custom_action' => array(
+      'type' => 'node',
+      'label' => t('Change type of product'),
+      'behavior' => array('changes_property'),
+      'configurable' => TRUE,
+      'triggers' => array('any'),
+    ),
+    'change_type_term_set_description_action' => array(
+      'type' => 'taxonomy_term',
+      'label' => t('Set term description'),
+      'behavior' => array('changes_property'),
+      'configurable' => TRUE,
+      'triggers' => array('any'),
+    ),
+    'change_type_pets_owners_views_entity_action' => array(
+      'type' => 'pets_owners_views_entity',
+      'label' => t('Gender change'),
+      'behavior' => array('changes_property'),
+      'configurable' => TRUE,
+      'triggers' => array('any'),
+    ),
+  );
+}
+
+/**
+ * @param $settings
+ * @param $form_state
+ *
+ * @return array
+ */
+function change_type_pets_owners_views_entity_action_form($settings, &$form_state) {
+  $form = array();
+  $active = array(0 => t('male'), 1 => t('female'), 2 => t('other'));
+  $form['gender'] = array(
+    '#type' => 'select',
+    '#title' => t('Choose new gender of owner'),
+    '#options' => $active,
+    '#required' => TRUE,
+  );
+
+  return $form;
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ *
+ * @return array
+ */
+function change_type_pets_owners_views_entity_action_submit($form, $form_state) {
+  $return = array();
+  $return['gender'] = $form_state['values']['gender'];
+
+  return $return;
+}
+
+/**
+ * @param $entity
+ * @param $context
+ */
+function change_type_pets_owners_views_entity_action(&$entity, $context) {
+  if (!isset($context['gender'])) {
+    return;
+  }
+
+  $entity->gender = $context['gender'];
+}
+
+/**
+ * @param $settings
+ * @param $form_state
+ *
+ * @return array
+ */
+function change_type_my_custom_action_form($settings, &$form_state) {
+//  $terms = taxonomy_vocabulary_machine_name_load('product_type');
+//  $opt = array();
+//  foreach ($terms as $term) {
+//    $opt[$term->tid] = entity_label('taxonomy_term', $term);
+//  }
+  $vocabulary = taxonomy_get_tree(7);
+  $list = array();
+  if (!empty($vocabulary)) {
+    foreach ($vocabulary as $taxonomy) {
+      $list[$taxonomy->tid] = $taxonomy->name;
+    }
+  }
+  $form = array();
+  $form['product_type'] = array(
+    '#type' => 'select',
+    '#title' => t('Choose new type of the product'),
+    '#options' => $list,
+    '#required' => TRUE,
+  );
+
+  return $form;
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ *
+ * @return array
+ */
+function change_type_my_custom_action_submit($form, $form_state) {
+  $return = array();
+  $return['product_type'] = $form_state['values']['product_type'];
+
+  return $return;
+}
+
+/**
+ * @param $entity
+ * @param $context
+ */
+function change_type_my_custom_action(&$entity, $context) {
+  if (!isset($context['product_type'])) {
+    return;
+  }
+
+  $entity->field_ep_product_type[LANGUAGE_NONE][0]['target_id'] = $context['product_type'];
+}
+
+/**
+ * @param $settings
+ * @param $form_state
+ *
+ * @return array
+ */
+function change_type_term_set_description_action_form($settings, &$form_state) {
+  $form = array();
+  $form['description'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Add or change description'),
+  );
+
+  return $form;
+}
+
+/**
+ * @param $form
+ * @param $form_state
+ *
+ * @return array
+ */
+function change_type_term_set_description_action_submit($form, $form_state) {
+  $return = array();
+  $return['description'] = $form_state['values']['description'];
+
+  return $return;
+}
+
+/**
+ * @param $entity
+ * @param $context
+ */
+function change_type_term_set_description_action(&$entity, $context) {
+  if (!isset($context['description'])) {
+    return;
+  }
+
+  $entity->description = $context['description'];
+}

@@ -1,0 +1,4 @@
+core = "7.x"
+description = "This is custom module which called Module1 for form page"
+package = "Custom modules"
+name = "module1"

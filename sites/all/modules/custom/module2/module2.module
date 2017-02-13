@@ -1,0 +1,105 @@
+<?php
+/**
+ * @file
+ * Install, update, and uninstall functions for the module2 module.
+ */
+
+/**
+ * Implements hook_admin_menu_alter().
+ */
+function module2_menu_alter(&$items) {
+  $items['module1/page1']['access callback'] = 'module2_access_check';
+  $items['module1/page2']['access callback'] = 'module2_access_check';
+}
+
+/**
+ * Implements function access_check()
+ * @return bool
+ */
+function module2_access_check() {
+  return user_access('administer module1');
+}
+
+/**
+ * Implements hook_permission().
+ */
+function module2_permission() {
+  return array(
+    'administer module1' => array(
+      'title' => t('Administer module1'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function module2_form_module1_page1_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'module1_page1' || $form_id == 'module1_page2') {
+    $form['group'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Group'),
+      '#collapsible' => TRUE, // Added
+      '#collapsed' => FALSE,  // Added
+      '#weight' => -1,
+    );
+    $form['group']['name'] = $form['name'];
+    $form['group']['about'] = $form['about'];
+    $form['group']['name']['#required'] = TRUE;
+    $form['group']['about']['#required'] = TRUE;
+    $form['#validate'][] = 'module2_textarea_validation';
+    $form['#submit'][] = 'module2_form_submit';
+    unset($form['name']);
+    unset($form['about']);
+//    drupal_set_message("<pre>" .print_r($form, 1). "</pre>");
+  }
+}
+
+/**
+ * Implements function for validation
+ *
+ * @param $form
+ * @param $form_state
+ */
+function module2_textarea_validation($form, &$form_state) {
+//    drupal_set_message("<pre>" .print_r($form_state, 1). "</pre>");
+  if (count(explode(" ", $form_state['input']['about'])) < 6) {
+    form_set_error('about', t('number of words should be more than 5'));
+  }
+}
+
+/**
+ * Implements hook submit
+ *
+ * @param $form
+ * @param $form_state
+ */
+function module2_form_submit($form, &$form_state) {
+  $str = serialize($form_state['values']);
+  dsm($form_state['values']);
+  watchdog("module2", "serialized data => !str", array('!str' => $str));
+//    watchdog("module2", 'name => !name about => !about gender => !gender',
+//      array('!name' => $form_state['values']['name'],
+//        '!about' => $form_state['values']['about'],
+//        '!gender' => $form_state['values']['gender']
+//      )
+//    );
+}
+
+/**
+ * Implements custom hook module1_students_score()
+ */
+function module2_students_score() {
+  $score_table = array('Nata' => 3, 'Eli' => 3, 'Angela' => 3);
+  return $score_table;
+}
+
+/**
+ * Implements module2_students_score_alter().
+ */
+function module2_students_score_alter(&$arg) {
+  $arg['Nazar'] = 5;
+}
+
+
+
